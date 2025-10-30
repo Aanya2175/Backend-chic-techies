@@ -11,10 +11,10 @@ Functions:
 from typing import Dict, Any
 
 GRADE_THRESHOLDS = {
-    "A": 85,
-    "B": 70,
-    "C": 55,
-    "D": 40,
+    "A": 80,  # Lowered from 85
+    "B": 65,  # Lowered from 70
+    "C": 50,  # Lowered from 55
+    "D": 35,  # Lowered from 40
     "F": 0
 }
 

@@ -158,37 +158,48 @@ def compute_core_metrics(features: Dict[str, float]) -> Dict[str, float]:
     paste_events = features.get("paste_events", 0)
     self_explanations = features.get("self_explanations", 0)
 
-    # Debugging efficiency: ratio of successful runs per run, scaled with diminishing returns
-    debug_eff = (successful / runs) if runs > 0 else 0.0
-    # scale to smooth behaviour:
-    debugging_efficiency = max(0.0, min(1.0, debug_eff))
+    # Debugging efficiency: more forgiving approach
+    if runs == 0:
+        debugging_efficiency = 0.5  # Neutral score for no attempts
+    else:
+        debug_eff = successful / runs
+        # Bonus for any successful runs, even if not all
+        base_score = min(0.4, successful * 0.2)  # Base credit for successes
+        efficiency_bonus = debug_eff * 0.6  # Efficiency component
+        debugging_efficiency = min(1.0, base_score + efficiency_bonus)
+    debugging_efficiency = max(0.0, min(1.0, debugging_efficiency))
 
-    # Adaptability: edits + unique versions normalized by session duration
+    # Adaptability: edits + unique versions normalized by session duration (improved formula)
     edits_per_min = (edits / (duration_s / 60.0)) if duration_s > 0 else edits
-    # normalize edits_per_min roughly: 0..10 -> 0..1
-    adaptability = 1.0 - math.exp(-edits_per_min / 3.0)  # quick saturating transform
+    # More forgiving normalization: 0..8 -> 0..1, with base score for any activity
+    base_adaptability = min(0.4, edits * 0.1)  # Base score for any edits
+    bonus_adaptability = 1.0 - math.exp(-edits_per_min / 5.0)  # Less harsh exponential
+    adaptability = min(1.0, base_adaptability + bonus_adaptability * 0.6)
     adaptability = max(0.0, min(1.0, adaptability))
 
-    # Reasoning score: presence & length of self_explanations and moderate edit patterns
-    # More self explanations indicate better reasoning; if none, degrade
-    reasoning_base = min(1.0, self_explanations / 2.0)  # 0, 0.5, 1.0 for 0,1,2+ explanations
-    # combine with unique_versions signal
-    reasoning_score = 0.6 * reasoning_base + 0.4 * (min(1.0, unique_versions / (edits + 1)))
-    reasoning_score = max(0.0, min(1.0, reasoning_score))
+    # Reasoning score: improved to be less dependent on explicit explanations
+    reasoning_base = min(1.0, self_explanations / 1.5)  # More generous: 0, 0.67, 1.0 for 0,1,2+ explanations
+    # Give credit for code iteration patterns (shows thinking)
+    iteration_bonus = min(0.5, edits * 0.08)  # Bonus for iterative development
+    # Combine with unique_versions signal
+    version_score = min(1.0, unique_versions / max(1, edits * 0.5))  # Less harsh denominator
+    reasoning_score = 0.4 * reasoning_base + 0.3 * version_score + 0.3 * iteration_bonus
+    reasoning_score = max(0.2, min(1.0, reasoning_score))  # Minimum 0.2 for any activity
 
-    # Ethical AI usage: prefer relevant_ai / ai_queries; penalize excessive AI relative to edits
+    # Ethical AI usage: more balanced approach
     if ai_queries == 0:
-        ethical_ai = 1.0  # used none: neutral/ok
+        ethical_ai = 0.9  # Slight bonus for not using AI, but not perfect
     else:
         relevance_ratio = relevant_ai / ai_queries
-        # penalty for AI queries >> edits (copy-paste-like)
+        # More lenient penalty for AI usage
         ai_per_edit = ai_queries / max(1.0, edits)
-        penalty = min(1.0, ai_per_edit / 3.0)  # if >3 queries per edit, heavy penalty
-        ethical_ai = max(0.0, min(1.0, relevance_ratio * (1.0 - 0.5 * penalty)))
+        penalty = min(0.8, ai_per_edit / 4.0)  # Less harsh: >4 queries per edit for max penalty
+        ethical_ai = max(0.3, min(1.0, relevance_ratio * (1.0 - 0.3 * penalty)))  # Higher minimum
 
-    # reduce ethical score if there are many paste events
+    # More lenient paste penalty
     if paste_events > 0:
-        ethical_ai *= max(0.0, 1.0 - min(0.6, paste_events * 0.15))
+        paste_penalty = min(0.4, paste_events * 0.1)  # Reduced penalty
+        ethical_ai *= max(0.4, 1.0 - paste_penalty)  # Higher minimum after penalty
 
     # clamp
     ethical_ai = max(0.0, min(1.0, ethical_ai))

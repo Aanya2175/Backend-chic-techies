@@ -9,14 +9,15 @@ Contains all business logic modules:
 - summary_generator: generates recruiter-facing summaries
 """
 
-from .data_processing import process_candidate_data
-from .evaluation_engine import evaluate_candidate
+from .data_processing import evaluate_raw_session, preprocess_session_data
+from .evaluation_engine import evaluate_candidate_session
 from .ai_usage_analyzer import analyze_ai_usage
 from .summary_generator import generate_summary
 
 __all__ = [
-    "process_candidate_data",
-    "evaluate_candidate",
+    "evaluate_raw_session",
+    "preprocess_session_data",
+    "evaluate_candidate_session",
     "analyze_ai_usage",
     "generate_summary",
 ]
