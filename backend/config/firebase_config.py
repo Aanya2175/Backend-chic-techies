@@ -19,6 +19,6 @@ def init_app():
             logging.info("Firebase initialized.")
         else:
             logging.info("Firebase not configured - running in MOCK mode.")
-    except Exception as e:
+    except (ImportError, ValueError, FileNotFoundError) as e:
         logging.warning("Firebase init failed; running MOCK mode. Error: %s", e)
         firebase_initialized = False

@@ -80,9 +80,12 @@ def fuzzy_rules(metrics: Dict[str, float]) -> Tuple[float, str]:
     rules.append((act, 0.75))
 
     # Defuzzification (centroid-like)
-    numerator = sum(act * val for act, val in rules)
-    denominator = sum(act for act, _ in rules) or 1e-6
-    score = round((numerator / denominator) * 100, 2)
+    try:
+        numerator = sum(act * val for act, val in rules)
+        denominator = sum(act for act, _ in rules) or 1e-6
+        score = round((numerator / denominator) * 100, 2)
+    except (ValueError, TypeError, ZeroDivisionError):
+        score = 50.0  # fallback score
 
     # Generate summary
     summary_parts = []

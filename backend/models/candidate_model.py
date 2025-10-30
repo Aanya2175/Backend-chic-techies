@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from typing import List, Optional, Dict, Any
 
 class CodeSnapshot(BaseModel):
@@ -35,3 +35,10 @@ class CandidateAttempt(BaseModel):
     behavior_metrics: BehaviorMetrics = BehaviorMetrics()
     self_explanation: Optional[str] = None
     system_metadata: Optional[Dict[str, Any]] = {}
+    
+    @classmethod
+    def safe_create(cls, data: Dict[str, Any]) -> Optional['CandidateAttempt']:
+        try:
+            return cls(**data)
+        except (ValidationError, TypeError, ValueError):
+            return None

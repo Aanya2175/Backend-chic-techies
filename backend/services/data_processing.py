@@ -15,7 +15,13 @@ import logging
 from datetime import datetime
 
 # Import evaluation engine for integration
-from app.services.evaluation_engine import evaluate_candidate_session
+try:
+    from app.services.evaluation_engine import evaluate_candidate_session
+except ImportError:
+    try:
+        from services.evaluation_engine import evaluate_candidate_session
+    except ImportError:
+        evaluate_candidate_session = None
 
 logger = logging.getLogger("data_processing")
 if not logger.handlers:
@@ -146,6 +152,8 @@ def evaluate_raw_session(raw_data: Any) -> Dict[str, Any]:
     processed = preprocess_session_data(raw_data)
     if not processed.get("events"):
         return {"error": "No valid events to evaluate"}
+    if not evaluate_candidate_session:
+        return {"error": "Evaluation engine not available"}
     result = evaluate_candidate_session(processed)
     return result
 
