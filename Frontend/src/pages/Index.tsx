@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
-import { QuestionSidebar } from "@/components/QuestionSidebar";
-import { QuestionDetail } from "@/components/QuestionDetail";
-import { CodeEditor } from "@/components/CodeEditor";
-import { TestResults } from "@/components/TestResults";
-import { Chatbot } from "@/components/Chatbot";
+import { QuestionSidebar, QuestionDetail } from "@/features/questions";
+import { CodeEditor, TestResults } from "@/features/coding-session";
+import { Chatbot } from "@/features/chat";
 import { toast } from "sonner";
 import { submitAnswer, logActivity } from "@/services/firestore.service";
 import { runCode, runTests, submitSolution } from "@/services/backend.service";
