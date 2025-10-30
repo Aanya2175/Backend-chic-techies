@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+pydantic
+sqlalchemy
+alembic
+python-dotenv
+firebase-admin
+langchain
+openai
+requests
+pytest
+python-multipart
