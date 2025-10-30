@@ -59,14 +59,15 @@ def analyze_ai_usage(events: List[Dict[str, Any]]) -> Dict[str, Any]:
         last_event_type = etype
 
     # Compute ratios
-    relevance_ratio = (relevant_ai / ai_queries) if ai_queries else 0
-    paste_dependency = (paste_after_ai / copy_paste_total) if copy_paste_total else 0
-    engagement_ratio = (edits_after_ai / ai_queries) if ai_queries else 0
+    relevance_ratio = (relevant_ai / ai_queries) if ai_queries > 0 else 0
+    paste_dependency = (paste_after_ai / copy_paste_total) if copy_paste_total > 0 else 0
+    engagement_ratio = (edits_after_ai / ai_queries) if ai_queries > 0 else 0
 
     # Simple heuristic scoring (0..1)
-    engagement_score = round(min(1.0, relevance_ratio * (1 - paste_dependency) * (0.5 + engagement_ratio)), 3)
+    base_score = relevance_ratio * (1 - paste_dependency) * (0.5 + engagement_ratio)
+    engagement_score = round(min(1.0, base_score), 3)
 
-    # Interpret behavior
+    # Interpret behavior patterns
     if ai_queries == 0:
         ethical_flag = "neutral"
         usage_pattern = "manual-only"

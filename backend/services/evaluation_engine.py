@@ -23,12 +23,12 @@ import logging
 # Optional imports (if provided elsewhere in your codebase).
 try:
     from app.services.ai_usage_analyzer import analyze_ai_usage  # type: ignore
-except Exception:
+except (ImportError, ModuleNotFoundError):
     analyze_ai_usage = None  # fallback used below
 
 try:
     from app.services.fuzzy_logic_engine import fuzzy_evaluate  # type: ignore
-except Exception:
+except (ImportError, ModuleNotFoundError):
     fuzzy_evaluate = None  # fallback defined below
 
 # Logging setup
@@ -72,13 +72,13 @@ def extract_core_features(events: List[Dict[str, Any]]) -> Dict[str, float]:
         if isinstance(payload, str):
             try:
                 payload = json.loads(payload)
-            except Exception:
+            except (json.JSONDecodeError, ValueError):
                 payload = {"raw": payload}
 
         if "timestamp" in ev:
             try:
                 timestamps.append(float(ev["timestamp"]))
-            except Exception:
+            except (ValueError, TypeError):
                 pass
 
         if ev_type == "run":
@@ -116,7 +116,7 @@ def extract_core_features(events: List[Dict[str, Any]]) -> Dict[str, float]:
             duration_s = max(timestamps) - min(timestamps)
             if duration_s < 0:
                 duration_s = 0.0
-        except Exception:
+        except (ValueError, TypeError):
             duration_s = 0.0
 
     features = {
@@ -305,7 +305,7 @@ def evaluate_candidate_session(candidate_data: Dict[str, Any]) -> Dict[str, Any]
     if analyze_ai_usage:
         try:
             ai_analysis = analyze_ai_usage(events)  # expected to return dict with more signals if implemented
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError) as e:
             logger.warning("analyze_ai_usage failed: %s", e)
             ai_analysis = None
 
@@ -318,7 +318,7 @@ def evaluate_candidate_session(candidate_data: Dict[str, Any]) -> Dict[str, Any]
                 edits=int(features.get("edits", 0))
             )
             fuzzy_membership = None
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError) as e:
             logger.exception("external fuzzy_evaluate failed, falling back: %s", e)
             score, summary, fuzzy_membership = _fallback_fuzzy_evaluate(core_metrics)
     else:
@@ -359,20 +359,24 @@ def evaluate_session_from_sqlite(db_path: str, session_id: str) -> Dict[str, Any
     and evaluate.
     """
     import sqlite3
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute("SELECT event_type, payload, timestamp FROM events WHERE session_id = ? ORDER BY timestamp", (session_id,))
-    rows = cur.fetchall()
-    conn.close()
-    events = []
-    for r in rows:
-        ev_type, payload, timestamp = r
-        try:
-            payload_obj = json.loads(payload) if isinstance(payload, str) else payload
-        except Exception:
-            payload_obj = {"raw": payload}
-        events.append({"event_type": ev_type, "payload": payload_obj, "timestamp": timestamp})
-    return evaluate_candidate_session({"events": events})
+    conn = None
+    try:
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        cur.execute("SELECT event_type, payload, timestamp FROM events WHERE session_id = ? ORDER BY timestamp", (session_id,))
+        rows = cur.fetchall()
+        events = []
+        for r in rows:
+            ev_type, payload, timestamp = r
+            try:
+                payload_obj = json.loads(payload) if isinstance(payload, str) else payload
+            except (json.JSONDecodeError, ValueError):
+                payload_obj = {"raw": payload}
+            events.append({"event_type": ev_type, "payload": payload_obj, "timestamp": timestamp})
+        return evaluate_candidate_session({"events": events})
+    finally:
+        if conn:
+            conn.close()
 
 
 # -----------------------------
